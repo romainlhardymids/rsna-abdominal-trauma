@@ -1,0 +1,8 @@
+1. How to deal with inconsistent slice thickness? How about slice spacing?
+    a. Make consistent? Can maybe ignore?
+2. 2D approach
+    a. Segmentation: locate important organs
+    b. Predict on slices with specific organs, i.e. bowel prediction on bowel slices
+    c. Use segmenetation predictions as auxiliary labels?
+    d. Crop and zoom around ROI based on segmentation?
+3. Interpolation type?
