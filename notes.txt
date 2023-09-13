@@ -6,3 +6,58 @@
     c. Use segmenetation predictions as auxiliary labels?
     d. Crop and zoom around ROI based on segmentation?
 3. Interpolation type?
+4. Binary slice classification? Or multilabel?
+    a. Relative loss weights?
+5. Train spine segmentation model?
+6. Flip inverted scans
+    a. Check segmentation labels for alignment
+7. Experiments
+    a. Remove augmentations
+        a1. Rotation + resized crop + pixel dropout seems to improve performance slightly
+    b. Lower organ segmentation thresholds for labels
+        b1. Decreased threshold from 0.9 to 0.5, performance is slightly worse
+    c. Label smoothing
+        c1. Smoothing factor of 0.1 works well, have not tried larger
+    d. Lower learning rate 
+    e. Different image sizes
+        e1. 384 and 768 do not seem effective
+    f. Different encoders
+        f1. tf_efficientnetv2_m.in21k_ft_in1k - worse than v2_s
+        f2. tf_efficientnetv2_b3.in21k_ft_in1k - global loss is similar, but AUROC is worse
+    g. Train slice segmentation model + overlay predicted masks (or use masks as auxiliary targets?)
+    h. Loss/weight scheduling
+    i. Different relative weights
+    j. Add images from patients with no extravasation injuries (but other organ injuries) to slice classification dataset
+    k. Add negative images from slice dataset patients to prevent overfitting
+    l. Different LSTM scan model parameters (time_dim, hidden_dim, dropout)
+        l1. 128 is better than 256
+        l2. 64 is worse than 128
+        l3. Not much difference when resizing to time_dim versus cropping
+    m. Augmentations for sequence model
+        m1. PixelDropout does not seem effective, but maybe with higher learning rate?
+    n. XGBoost ensemble instead of LSTM?
+    o. Increase scale factors during training
+        o1. Doubling positive weights
+    p. Add aortic_hu/incomplete organ labels to ensemble
+8. How should we deal with multiple series per patient?
+9. Stratified K-fold to maintain consistent label distribution
+10. Use multiphasic slices as channels (repeat same array is not multiphasic)
+    a. Multiphase scans are not necessarily aligned, maybe combine during second stage?
+11. Mix segmentation features during slice training
+12. Sequence augmentations
+    a. Timestep dropout (i.e. row dropout)
+    b. Feature dropout (i.e. column dropout)
+13. Combine first and second stage into one model (2D CNN on all slices, then LSTM for final prediction)
+14. Can extravasation be present anywhere?
+    a. Yes, checked that extravasation injuries were present in slices with all relevant organs
+16. Vertical/horizontal flip transformations
+17. SAM-Med2D: https://arxiv.org/pdf/2308.16184.pdf
+
+
+MODEL PERFORMANCE
+1. Segmentation
+    a. tf_efficientnetv2_s_512
+        a1. No augmentations - 0.9972
+        a2. Add augmentations - 0.9965
+2. Slice classification
+    a.

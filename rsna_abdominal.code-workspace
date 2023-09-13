@@ -3,5 +3,8 @@
 		{
 			"path": "."
 		}
-	]
+	],
+	"settings": {
+		"notebook.output.scrolling": true
+	}
 }
