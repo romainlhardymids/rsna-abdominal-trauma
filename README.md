@@ -21,3 +21,6 @@ python3 src/scripts/segmentation/train.py --config=configs/segmentation/tf_effic
 # Inference
 python3 src/scripts/segmentation/train.py --config=configs/segmentation/inference.yaml
 ```
+
+# Slice-level feature extraction
+The second stage strives to extract slice-level features for each patient scan, which are then fed to the scan-level classifier in the third stage. I train the slice-level models on slice-level labels, which are obtained by multiplying the scan-level labels by the visibility of each organ on a given slice (for instance, a patient with a high-grade liver injury would have positive slice-level liver injury labels only on the slices where the liver is visible). I train three families of slice-level classifiers: EfficientNet, ConvNeXt, and MaxViT. During inference, I extract the n-dimensional features output by the last hidden layer of each model.
