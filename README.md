@@ -12,4 +12,14 @@ An overview of the solution is shown in the figure below.
 TODO: ADD FIGURE
 
 # Segmentation
-The segmentation stage aims to extract bounds for relevant organs in the patient scans (bowel, liver, kidney, and spleen), which we can then leverage in downstream classification models. My choice of segmentator architecture is a 3D UNet model with dimensions 128 x 224 x 224, which I construct by inflating the modules of a 2D UNet model. The model is trained on the subset of patients with available segmentation labels, and used to predict segmentation probability maps for the full set of patients.
+The segmentation stage aims to extract bounds for relevant organs in the patient scans (bowel, liver, kidney, and spleen), which we can then leverage in downstream classification models. My choice of segmentator architecture is a 3D UNet model with dimensions 128 x 224 x 224, which I construct by inflating the modules of a 2D UNet model with an EfficientNet backbone. I train the model on the subset of patients with available segmentation labels, and use it to predict segmentation probability maps for the full set of patients.
+
+## Training
+```
+python3 src/scripts/segmentation/train.py --config=configs/segmentation/tf_efficientnetv2_s_128_224_224.yaml
+```
+
+## Inference
+```
+python3 src/scripts/segmentation/train.py --config=configs/segmentation/inference.yaml
+```
