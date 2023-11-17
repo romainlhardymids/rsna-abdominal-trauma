@@ -1,0 +1,72 @@
+seed: 0
+folds: [2, 3, 4]
+train_batch_size: 2
+valid_batch_size: 8
+num_workers: 8
+output_dir: "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/segmentation/checkpoints"
+wandb_project: "rsna-abdominal-segmentation"
+
+early_stopping:
+  mode: "min"
+  patience: 100
+  verbose: 1
+
+accumulate:
+  scheduling: {0: 1}
+
+swa:
+  swa_lrs: 1.0e-2
+  swa_epoch_start: 0.8
+
+model:
+  scheduler:
+    num_warmup_steps: 1000
+    num_training_steps: 25000
+  optimizer:
+    lr: 1.0e-3
+    betas: [0.9, 0.999]
+    weight_decay: 1.0e-5
+    eps: 1.0e-8
+  model:
+    family: "unet"
+    num_classes: 6
+    encoder_params:
+      class: EfficientNetEncoder2d
+      encoder_name: "tf_efficientnetv2_s.in21k_ft_in1k"
+      params:
+        out_channels: [3, 24, 48, 64, 160, 256]
+        stage_idx: [2, 3, 5]
+        backbone_params: 
+          pretrained: true
+          in_chans: 3
+          drop_path_rate: 0.2
+    decoder_params: 
+      decoder_channels: [256, 128, 64, 32, 16]
+      scale_factors: [2, 2, 2, 2, 2]
+      num_blocks: 5
+      block_depth: 1
+      separable: false
+      use_aspp: false
+      use_batchnorm: true 
+      attention_type: "scse"
+      activation: "silu"
+  losses:
+    prob_mixup: 0.1
+    weights: [0.5, 0.5]
+    criteria:
+      bce:
+        type: "bce"
+        pos_weight: 1.0
+      dice: 
+        type: "dice"
+        label_smoothing: 0.1
+
+trainer:
+  min_steps: 25000
+  max_steps: 25000
+  max_epochs: 1000
+  enable_progress_bar: false
+  precision: "16-mixed"
+  accelerator: "gpu"
+  devices: 2
+  strategy: "ddp_find_unused_parameters_true"

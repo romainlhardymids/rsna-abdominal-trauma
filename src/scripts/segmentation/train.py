@@ -22,105 +22,14 @@ from pytorch_lightning.callbacks import (
     StochasticWeightAveraging
 )
 from pytorch_lightning.loggers import WandbLogger
-from torchmetrics.functional import accuracy, auroc, fbeta_score
 from torch.utils.data import DataLoader
 from transformers import get_cosine_with_hard_restarts_schedule_with_warmup
-from typing import Any, Dict, Optional
 
 warnings.filterwarnings("ignore") 
 
 
-# class SegmentationModule(pl.LightningModule):
-#     def __init__(self, config):
-#         super().__init__()
-#         self.config = config
-#         self.model = create_segmentation_model(config["model"])
-#         self.num_labels = config["model"]["num_classes"]
-#         self.logit_tracker = []
-#         self.label_tracker = []
-
-#     def configure_optimizers(self):
-#         lr = self.config["optimizer"]["lr"]
-#         optimizer = torch.optim.AdamW(
-#             self.parameters(),
-#             **self.config["optimizer"]
-#         )
-#         scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
-#             optimizer,
-#             **self.config["scheduler"],
-#         )
-#         lr_scheduler_dict = {"scheduler": scheduler, "interval": "step"}
-#         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_dict}
-    
-#     def compute_losses(self, logits, y):
-#         loss_cross_entropy = F.cross_entropy(logits, y, ignore_index=-100, reduction="mean",)
-#         loss_dice = DiceLoss(mode="multiclass", from_logits=True, smooth=0.1, ignore_index=-100)(logits, y)
-#         return loss_cross_entropy, loss_dice
-
-#     def training_step(self, batch, batch_idx):
-#         x = batch["image"]
-#         y = batch["mask"].long()
-#         logits = self.model(x)
-#         if logits.shape[-1] != y.shape[-1]:
-#             logits = F.interpolate(logits, size=y.shape[-1], mode="bilinear")
-#         loss_cross_entropy, loss_dice = self.compute_losses(logits, y)
-#         loss = 0.5 * loss_cross_entropy + 0.5 * loss_dice
-#         for param_group in self.trainer.optimizers[0].param_groups:
-#             lr = param_group["lr"]
-#         self.log("train_loss", loss, on_step=True, on_epoch=True)
-#         self.log("train_loss_cross_entropy", loss, on_step=True, on_epoch=True)
-#         self.log("train_loss_dice", loss, on_step=True, on_epoch=True)
-#         self.log("lr", lr, on_step=True, on_epoch=False)
-#         return loss
-    
-#     def validation_step(self, batch, batch_idx):
-#         x = batch["image"]
-#         y = batch["mask"].long()
-#         logits = self.model(x)
-#         if logits.shape[-1] != y.shape[-1]:
-#             logits = F.interpolate(logits, size=256, mode="bilinear")
-#         loss = self.compute_losses(logits, y)
-#         # self.logit_tracker.append(logits)
-#         # self.label_tracker.append(torch.permute(F.one_hot(y, num_classes=self.num_labels), (0, 3, 1, 2)))
-#         self.log("valid_loss", loss, on_step=False, on_epoch=True)
-
-#     def on_validation_epoch_end(self):
-#         # logits = torch.cat(self.logit_tracker)
-#         # labels = torch.cat(self.label_tracker)
-#         # self.log("valid_accuracy", valid_accuracy, on_step=False, on_epoch=True)
-#         # self.log("valid_auroc", valid_auroc, on_step=False, on_epoch=True)
-#         # self.log("valid_f1", valid_f1, on_step=False, on_epoch=True)
-#         self.logit_tracker.clear()
-#         self.label_tracker.clear()
-
-
-# def binary_dice_score(logits, y_true, threshold=None, epsilon=1e-8):
-#     y_pred = logits.sigmoid()
-#     if threshold is not None:
-#         y_pred = (y_pred > threshold).to(y_true.dtype)
-#     intersection = (y_pred * y_true).sum()
-#     cardinality = y_pred + y_true
-#     score = (2.0 * intersection) / (cardinality + epsilon)
-#     if y_true.sum() == 0:
-#         score = torch.tensor(float(y_pred.sum() == 0))
-#     return score.item()
-
-
-# def multilabel_dice_score(logits, y_true, threshold=None, epsilon=1e-8):
-#     scores = []
-#     num_classes = y_true.size(0)
-#     for c in range(num_classes):
-#         score = binary_dice_score(
-#             logits=logits[c],
-#             y_true=y_true[c],
-#             threshold=threshold,
-#             eps=epsilon
-#         )
-#         scores.append(score)
-#     return scores
-
-
 def mixup(x, y, clip=[0.0, 1.0]):
+    """Mix-up augmentation."""
     indices = torch.randperm(x.size(0))
     x_shuffled = x[indices]
     y_shuffled = y[indices]
@@ -130,6 +39,7 @@ def mixup(x, y, clip=[0.0, 1.0]):
 
 
 class SegmentationModule(pl.LightningModule):
+    """PyTorch Lightning module for training a segmentation model."""
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -199,6 +109,7 @@ class SegmentationModule(pl.LightningModule):
         
 
 def parse_args():
+    """Parses command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="/home/romainlhardy/kaggle/rsna-abdominal-trauma/configs/segmentation/config.yaml", required=True)
     args = parser.parse_args()
@@ -206,6 +117,7 @@ def parse_args():
 
 
 def train(fold, config):
+    """Trains a segmentation model on a specified fold."""
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",

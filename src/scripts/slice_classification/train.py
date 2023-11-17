@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import os
 import pytorch_lightning as pl
+import random
 import torch
 import torch.nn.functional as F
 import wandb
@@ -30,95 +31,18 @@ from transformers import get_cosine_with_hard_restarts_schedule_with_warmup
 warnings.filterwarnings("ignore") 
 
 
-# class SliceClassificationModule(pl.LightningModule):
-#     def __init__(self, config):
-#         super().__init__()
-#         self.config = config
-#         self.model = create_slice_classification_model(config["model"])
-#         self.clf_criteria = self.config["losses"]["classification_criteria"]
-#         self.seg_criteria = self.config["losses"]["segmentation_criteria"]
-#         self.alpha = self.config["losses"]["alpha"]
-
-#     def configure_optimizers(self):
-#         optimizer = torch.optim.AdamW(
-#             self.parameters(),
-#             **self.config["optimizer"]
-#         )
-#         scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
-#             optimizer,
-#             **self.config["scheduler"],
-#         )
-#         lr_scheduler_dict = {"scheduler": scheduler, "interval": "step"}
-#         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_dict}
-
-#     def compute_classification_loss(self, logits, y, criterion):
-#         if criterion["type"] == "bce":
-#             pos_weight = torch.tensor([criterion["pos_weight"]]).to(self.device)
-#             return F.binary_cross_entropy_with_logits(logits, y, pos_weight=pos_weight, reduction="mean")
-#         elif criterion["type"] == "ce":
-#             weight = torch.tensor(criterion["weight"]).to(self.device)
-#             label_smoothing = float(criterion["label_smoothing"])
-#             return F.cross_entropy(logits, y, weight=weight, label_smoothing=label_smoothing, ignore_index=-100, reduction="mean")
-#         else:
-#             raise ValueError(f"Criterion type `{criterion['type']}` is not supported.")
-
-#     def compute_classification_losses(self, logits_list, y_list):
-#         losses = []
-#         for logits, y, criterion in zip(logits_list, y_list, self.clf_criteria.values()):
-#             losses.append(self.compute_classification_loss(logits, y, criterion))
-#         return losses
-
-#     def compute_segmentation_loss(self, weights, mask, criterion):
-#         pos_weight = torch.tensor([criterion["pos_weight"]]).to(self.device)
-#         n, c, h, w = weights.shape
-#         m = F.interpolate(mask[:, None], (h, w), mode="bilinear").repeat(1, c, 1, 1)
-#         return F.binary_cross_entropy_with_logits(weights, m, pos_weight=pos_weight, reduction="mean")
-
-#     def compute_segmentation_losses(self, attention_weights, segmentation):
-#         losses = []
-#         for i, organ in enumerate(["bowel", "liver", "spleen", "kidney"]):
-#             weights = attention_weights[i]
-#             if organ != "kidney":
-#                 mask = segmentation[:, utils.LABELS.index(organ)]
-#             else:
-#                 mask = torch.max(torch.stack([segmentation[:, utils.LABELS.index("left kidney")], segmentation[:, utils.LABELS.index("right kidney")]], dim=1), dim=1)[0]
-#             losses.append(self.compute_segmentation_loss(weights, mask, self.seg_criteria[organ]))
-#         return losses
-
-#     def step(self, batch):
-#         x = batch["image"]
-#         y_list = batch["labels"]
-#         logits_list, segmentation, attention_weights = self.model(x)
-#         clf_losses = self.compute_classification_losses(logits_list, y_list)
-#         seg_losses = self.compute_segmentation_losses(attention_weights[1:], segmentation)
-#         return clf_losses, seg_losses
-
-#     def training_step(self, batch, batch_idx):
-#         clf_losses, seg_losses = self.step(batch)
-#         clf_loss = sum(clf_losses) / len(clf_losses)
-#         seg_loss = sum(seg_losses) / len(seg_losses)
-#         loss = clf_loss + self.alpha * seg_loss
-#         for param_group in self.trainer.optimizers[0].param_groups:
-#             lr = param_group["lr"]
-#         self.log("train_loss", loss, on_step=True, on_epoch=True)
-#         self.log("lr", lr, on_step=True, on_epoch=False)
-#         for i, name in zip(range(6), ["any", "extravasation", "bowel", "liver", "spleen", "kidney"]):
-#             self.log(f"train_loss_{name}", clf_losses[i], on_step=False, on_epoch=True)
-#         self.log("train_loss_seg", seg_loss, on_step=False, on_epoch=True)
-#         return loss
-
-#     def validation_step(self, batch, batch_idx):
-#         clf_losses, seg_losses = self.step(batch)
-#         clf_loss = sum(clf_losses) / len(clf_losses)
-#         seg_loss = sum(seg_losses) / len(seg_losses)
-#         loss = clf_loss + self.alpha * seg_loss
-#         self.log("valid_loss", loss, on_step=False, on_epoch=True)
-#         for i, name in zip(range(6), ["any", "extravasation", "bowel", "liver", "spleen", "kidney"]):
-#             self.log(f"valid_loss_{name}", clf_losses[i], on_step=False, on_epoch=True)
-#         self.log("valid_loss_seg", seg_loss, on_step=False, on_epoch=True)
+def mixup(x, y_list, clip=[0.0, 1.0]):
+    """Mix-up augmentation."""
+    indices = torch.randperm(x.size(0))
+    x_shuffled = x[indices]
+    y_list_shuffled = [y[indices] for y in y_list]
+    alpha = random.uniform(clip[0], clip[1])
+    x = alpha * x + (1.0 - alpha) * x_shuffled
+    return x, y_list, y_list_shuffled, alpha
 
 
 class SliceClassificationModule(pl.LightningModule):
+    """PyTorch Lightning module for training a slice-level classification model."""
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -126,6 +50,9 @@ class SliceClassificationModule(pl.LightningModule):
         self.clf_criteria = self.config["losses"]["classification"]
         self.seg_criteria = self.config["losses"]["segmentation"]
         self.alpha = self.config["losses"]["alpha"]
+        self.prob_mixup = self.config["losses"]["prob_mixup"]
+        self.logits_tracker = []
+        self.labels_tracker = []
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
@@ -139,7 +66,16 @@ class SliceClassificationModule(pl.LightningModule):
         lr_scheduler_dict = {"scheduler": scheduler, "interval": "step"}
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler_dict}
 
-    def compute_classification_loss(self, logits, y, criterion, split="train"):
+    def compute_auroc(self, logits_list, y_list):
+        num_classes = [2, 2, 3, 4, 4, 4]
+        roc_list = []
+        for logits, y, nc in zip(logits_list, y_list, num_classes):
+            roc_list.append(
+                auroc(logits, y, task="multiclass", num_classes=nc)
+            )
+        return sum(roc_list) / len(roc_list)
+
+    def compute_clf_loss(self, logits, y, criterion, split="train"):
         if criterion["type"] == "bce":
             pos_weight = torch.tensor([criterion[f"{split}_weight"]]).to(self.device)
             return F.binary_cross_entropy_with_logits(logits, y, pos_weight=pos_weight, reduction="mean")
@@ -150,38 +86,63 @@ class SliceClassificationModule(pl.LightningModule):
         else:
             raise ValueError(f"Criterion type `{criterion['type']}` is not supported.")
 
-    def compute_classification_losses(self, logits_list, y_list, split="train"):
+    def compute_clf_losses(self, logits_list, y_list, split="train"):
         losses = []
         for logits, y, criterion in zip(logits_list, y_list, self.clf_criteria.values()):
-            losses.append(self.compute_classification_loss(logits, y, criterion, split))
+            losses.append(self.compute_clf_loss(logits, y, criterion, split))
         return losses
 
-    def compute_segmentation_loss(self, logits, y, criterion, split="train"):
+    def compute_seg_loss(self, logits, y, criterion, split="train"):
         pos_weight = torch.tensor([criterion[f"{split}_weight"]]).to(self.device)
         return F.binary_cross_entropy_with_logits(logits, y, pos_weight=pos_weight, reduction="mean")
 
-    def step(self, batch, split="train"):
-        x = batch["image"]
-        y_list = batch["labels"]
-        logits_list = self.model(x)
-        probs_list = [F.softmax(logits, dim=1) for logits in logits_list[:-1]]
+    def compute_seg_losses(self, logits_list, y_list, split="train"):
+        losses = []
+        for logits, y, criterion in zip(logits_list, y_list, self.seg_criteria.values()):
+            losses.append(self.compute_seg_loss(logits, y, criterion, split))
+        return losses
+
+    def compute_losses(self, logits_list, y_list, split="train"):
+        clf_losses = self.compute_clf_losses(logits_list[:-1], y_list[:-1], split)
+        seg_losses = self.compute_seg_losses([logits_list[-1]], [y_list[-1]], split)
+        return clf_losses + seg_losses
+
+    def compute_any_injury(self, logits_list):
+        probs_list = [F.softmax(logits, dim=-1) for logits in logits_list]
         healthy = torch.cat([
             probs_list[0][:, :1],
-            probs_list[1][:, :2],
-            probs_list[2][:, :2],
-            probs_list[3][:, :2],
-            probs_list[4][:, :2]
-        ], dim=1)
-        any_injury = (1.0 - healthy).max(dim=1)[0]
-        any_injury = torch.log(torch.cat([(1.0 - any_injury)[..., None], any_injury[..., None]], dim=1))
+            probs_list[1][:, :1],
+            probs_list[2][:, :1],
+            probs_list[3][:, :1],
+            probs_list[4][:, :1]
+        ], dim=-1)
+        any_injury = (1.0 - healthy).max(dim=-1)[0]
+        any_injury = torch.log(torch.cat([(1.0 - any_injury)[..., None], any_injury[..., None]], dim=-1))
         logits_list = [any_injury] + logits_list
-        clf_losses = self.compute_classification_losses(logits_list[:-1], y_list[:-1], split)
-        seg_loss = self.compute_segmentation_loss(logits_list[-1], y_list[-1], self.seg_criteria["organ"], split)
-        return clf_losses, seg_loss
+        return logits_list
+
+    def step(self, batch, split="train", do_mixup=False):
+        x = batch["image"]
+        y_list = batch["labels"]
+        if do_mixup and random.uniform(0, 1) < self.prob_mixup:
+            x, y_list, y_list_shuffled, alpha = mixup(x, y_list)
+            logits_list = self.model(x)
+            logits_list = self.compute_any_injury(logits_list)
+            losses_0 = self.compute_losses(logits_list, y_list, split)
+            losses_1 = self.compute_losses(logits_list, y_list_shuffled, split)
+            losses = [alpha * l0 + (1.0 - alpha) * l1 for l0, l1 in zip(losses_0, losses_1)]
+        else:
+            logits_list = self.model(x)
+            logits_list = self.compute_any_injury(logits_list)
+            losses = self.compute_losses(logits_list, y_list, split)
+        if split == "valid":
+            self.logits_tracker.append(logits_list[:-1])
+            self.labels_tracker.append(y_list)
+        return losses
 
     def training_step(self, batch, batch_idx):
-        clf_losses, seg_loss = self.step(batch, split="train")
-        clf_loss = sum(clf_losses) / len(clf_losses)
+        losses = self.step(batch, split="train", do_mixup=True)
+        clf_loss, seg_loss = sum(losses[:-1]) / len(losses[:-1]), losses[-1]
         loss = self.alpha * clf_loss + (1.0 - self.alpha) * seg_loss
         for param_group in self.trainer.optimizers[0].param_groups:
             lr = param_group["lr"]
@@ -190,20 +151,29 @@ class SliceClassificationModule(pl.LightningModule):
         self.log("train_loss_seg", seg_loss, on_step=False, on_epoch=True)
         self.log("lr", lr, on_step=True, on_epoch=False)
         for i, name in zip(range(6), ["any", "extravasation", "bowel", "liver", "spleen", "kidney"]):
-            self.log(f"train_loss_{name}", clf_losses[i], on_step=False, on_epoch=True)
+            self.log(f"train_loss_{name}", losses[:-1][i], on_step=False, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        clf_losses, seg_loss = self.step(batch, split="valid")
-        clf_loss = sum(clf_losses) / len(clf_losses)
+        losses = self.step(batch, split="valid", do_mixup=False)
+        clf_loss, seg_loss = sum(losses[:-1]) / len(losses[:-1]), losses[-1]
         loss = self.alpha * clf_loss + (1.0 - self.alpha) * seg_loss
         self.log("valid_loss", loss, on_step=False, on_epoch=True)
         self.log("valid_loss_inj", clf_loss, on_step=False, on_epoch=True)
         self.log("valid_loss_seg", seg_loss, on_step=False, on_epoch=True)
         for i, name in zip(range(6), ["any", "extravasation", "bowel", "liver", "spleen", "kidney"]):
-            self.log(f"valid_loss_{name}", clf_losses[i], on_step=False, on_epoch=True)
+            self.log(f"valid_loss_{name}", losses[:-1][i], on_step=False, on_epoch=True)
+
+    def on_validation_epoch_end(self):
+        logits_list = [torch.cat([x[i] for x in self.logits_tracker]).type(torch.half) for i in range(len(self.clf_criteria))]
+        y_list = [torch.cat([x[i] for x in self.labels_tracker]) for i in range(len(self.clf_criteria))]
+        roc = self.compute_auroc(logits_list, y_list)
+        self.log("valid_auroc", roc, on_step=False, on_epoch=True)
+        self.logits_tracker.clear()
+        self.labels_tracker.clear()
 
 def parse_args():
+    """Parses command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="/home/romainlhardy/kaggle/rsna-abdominal-trauma/configs/slice_classification/config.yaml", required=True)
     args = parser.parse_args()
@@ -211,6 +181,7 @@ def parse_args():
 
 
 def train(fold, config):
+    """Trains a slice-level classification model on a specified fold."""
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
@@ -225,14 +196,17 @@ def train(fold, config):
     df_valid = df[df.fold == fold]
 
     image_size = config["model"]["data"]["image_size"]
+    num_channels = config["model"]["data"]["num_channels"]
     train_dataset = SliceClassificationTrainingDataset(
         df_train,
         image_size=image_size,
+        num_channels=num_channels,
         split="train"
     )
     valid_dataset = SliceClassificationTrainingDataset(
         df_valid,
         image_size=image_size,
+        num_channels=num_channels,
         split="validation"
     )
     

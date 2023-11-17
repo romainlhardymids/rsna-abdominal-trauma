@@ -5,6 +5,7 @@ from timm.layers import LayerNorm2d, SelectAdaptivePool2d
 
 
 class MaskEncoder(nn.Module):
+    """Encodes a segmentation mask to a low-dimensional latent representation."""
     def __init__(self, in_channels, out_channels, r, **kwargs):
         super().__init__(**kwargs)
         channels = [in_channels, in_channels * r, in_channels * r * r, out_channels]

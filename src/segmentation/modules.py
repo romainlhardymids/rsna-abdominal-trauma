@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 
 def get_activation(activation):
+    """Returns the appropriate activation function given an alias."""
     if activation is None:
         return nn.Identity()
     elif activation == "relu":
@@ -15,6 +16,7 @@ def get_activation(activation):
 
 
 class SeparableConv2d(nn.Sequential):
+    """Separable 2D convolution layer."""
     def __init__(
         self,
         in_channels,
@@ -45,6 +47,7 @@ class SeparableConv2d(nn.Sequential):
 
 
 class SeparableConvBnAct(nn.Sequential):
+    """Module consisting of a separable 2D convolution layer, a batch normalization layer, and an activation layer."""
     def __init__(
         self, 
         in_channels, 
@@ -71,6 +74,7 @@ class SeparableConvBnAct(nn.Sequential):
 
 
 class ConvBnAct(nn.Sequential):
+    """Module consisting of a normal 2D convolution layer, a batch normalization layer, and an activation layer."""
     def __init__(
         self,
         in_channels,
@@ -95,6 +99,7 @@ class ConvBnAct(nn.Sequential):
 
 
 class ASPPPooling(nn.Sequential):
+    """Atrous Spatial Pyramid Pooling pooling layer."""
     def __init__(self, in_channels, out_channels, activation="silu"):
         super().__init__(
             nn.AdaptiveAvgPool2d(1),
@@ -109,6 +114,7 @@ class ASPPPooling(nn.Sequential):
 
 
 class ASPP(nn.Module):
+    """Atrous Spatial Pyramid Pooling block."""
     def __init__(
         self, 
         in_channels,
@@ -169,6 +175,7 @@ class ASPP(nn.Module):
 
 
 class SegmentationHead(nn.Sequential):
+    """Generic segmentation head."""
     def __init__(
         self, 
         in_channels, 
@@ -193,6 +200,7 @@ class SegmentationHead(nn.Sequential):
 
 
 class SCSEModule(nn.Module):
+    """Squeeze-channel and squeeze-excite module."""
     def __init__(self, in_channels, reduction=16):
         super().__init__()
         self.cSE = nn.Sequential(
@@ -209,6 +217,7 @@ class SCSEModule(nn.Module):
     
 
 class Attention(nn.Module):
+    """UNet attention module."""
     def __init__(self, name, **params):
         super().__init__()
         if name is None:

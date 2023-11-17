@@ -8,12 +8,14 @@ from segmentation.inflate import InflatedEfficientNet, InflatedConvNeXt, Inflate
 
 
 def create_encoder(encoder_params):
+    """Initializes an encoder from a given configuration."""
     module = getattr(sys.modules[__name__], encoder_params["class"])
     name = encoder_params["encoder_name"]
     return module(name=name, **encoder_params["params"])
 
 
 class BaseEncoder(nn.Module):
+    """Base encoder class."""
     def __init__(self, out_channels, **kwargs):
         super().__init__()
         self.out_channels = out_channels
@@ -31,6 +33,7 @@ class BaseEncoder(nn.Module):
     
 
 class ConvNeXtEncoder2d(BaseEncoder):
+    """ConvNeXt encoder class."""
     def __init__(
         self, 
         name,
@@ -55,6 +58,7 @@ class ConvNeXtEncoder2d(BaseEncoder):
 
 
 class EfficientNetEncoder2d(BaseEncoder):
+    """EfficientNet encoder class."""
     def __init__(
         self, 
         name,

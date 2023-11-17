@@ -1,0 +1,17 @@
+models: 
+  maxxvitv2_nano_256:
+    config_path: "/home/romainlhardy/kaggle/rsna-abdominal-trauma/configs/slice_classification/maxxvitv2_nano_256.yaml"
+    checkpoint_paths: [
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/slice_classification/checkpoints/maxxvitv2_nano_rw_256.sw_in1k__image_size_256__seed_0__fold_0.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/slice_classification/checkpoints/maxxvitv2_nano_rw_256.sw_in1k__image_size_256__seed_0__fold_1.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/slice_classification/checkpoints/maxxvitv2_nano_rw_256.sw_in1k__image_size_256__seed_0__fold_2.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/slice_classification/checkpoints/maxxvitv2_nano_rw_256.sw_in1k__image_size_256__seed_0__fold_3.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/slice_classification/checkpoints/maxxvitv2_nano_rw_256.sw_in1k__image_size_256__seed_0__fold_4.ckpt",
+    ]
+    folds: [0, 1, 2, 3, 4]
+
+features_dir: "/home/romainlhardy/kaggle/rsna-abdominal-trauma/data/slice_features/maxxvitv2_nano_256"
+mask_metadata: "/home/romainlhardy/kaggle/rsna-abdominal-trauma/data/mask_predictions/metadata.csv"
+device: "cuda"
+batch_size: 16
+num_workers: 8

@@ -11,21 +11,8 @@ from timm import create_model
 from timm.models.layers import Conv2dSame
 
 
-# def create_segmentation_model(config):
-#     return SegmentationModel(**config)
-
-
-# class SegmentationModel(nn.Module):
-#     def __init__(self, encoder_params):
-#         super().__init__()
-#         self.model = create_model(**encoder_params)
-
-#     def forward(self, x):
-#         logits = self.model(x)
-#         return logits
-
-
 def create_segmentation_model(config):
+    """Initializes a segmentation model from a given configuration."""
     config_ = config.copy()
     family = config_.pop("family")
     if family == "unet":
@@ -35,6 +22,7 @@ def create_segmentation_model(config):
     
 
 def inflate_module(module):
+    """Copies the weights of a two-dimensional module to its three-dimensional equivalent."""
     module_ = module
     if isinstance(module, nn.BatchNorm2d):
         module_ = nn.BatchNorm3d(
@@ -100,6 +88,7 @@ def inflate_module(module):
 
 
 class Unet(nn.Module):
+    """UNet segmentation model."""
     def __init__(
         self, 
         encoder_params,

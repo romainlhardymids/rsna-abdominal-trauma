@@ -1,0 +1,15 @@
+models: 
+  lstm_512_128:
+    config_path: "/home/romainlhardy/kaggle/rsna-abdominal-trauma/configs/scan_classification/lstm_512_128.yaml"
+    checkpoint_paths: [
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/scan_classification/checkpoints/lstm_256_128__seed_1__fold_0.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/scan_classification/checkpoints/lstm_256_128__seed_1__fold_1.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/scan_classification/checkpoints/lstm_256_128__seed_1__fold_2.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/scan_classification/checkpoints/lstm_256_128__seed_1__fold_3.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/scan_classification/checkpoints/lstm_256_128__seed_1__fold_4.ckpt"
+    ]
+    folds: [0, 1, 2, 3, 4]
+
+device: "cuda"
+batch_size: 32
+num_workers: 8

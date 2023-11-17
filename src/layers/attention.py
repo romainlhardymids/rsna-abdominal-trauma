@@ -5,6 +5,7 @@ from timm.layers import LayerNorm2d
 
 
 class Attention(nn.Module):
+    """Self-attention module for RNNs."""
     def __init__(self, time_dim, hidden_dim, bias=True, **kwargs):
         super(Attention, self).__init__(**kwargs)
         self.hidden_dim = hidden_dim
@@ -33,6 +34,7 @@ class Attention(nn.Module):
 
 
 class SoftAttention(nn.Module):
+    """Soft attention module for CNNs."""
     def __init__(self, in_channels, reduction=16):
         super().__init__()
         self.cSE = nn.Sequential(
@@ -54,6 +56,7 @@ class SoftAttention(nn.Module):
 
 
 class Adapter(nn.Module):
+    """Adapter module for CNNs (see SegMed2D)."""
     def __init__(self, in_channels, reduction=4, skip_connect=True):
         super().__init__()
         self.norm = LayerNorm2d(in_channels)

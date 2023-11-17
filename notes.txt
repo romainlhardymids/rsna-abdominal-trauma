@@ -52,6 +52,7 @@
     a. Yes, checked that extravasation injuries were present in slices with all relevant organs
 16. Vertical/horizontal flip transformations
 17. SAM-Med2D: https://arxiv.org/pdf/2308.16184.pdf
+18. Add check for null mask prediction
 
 
 MODEL PERFORMANCE

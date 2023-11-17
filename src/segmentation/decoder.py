@@ -2,12 +2,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import transformers.models.upernet.modeling_upernet as upernet
 
 from segmentation import modules as md
 
 
 class DecoderBlock(nn.Module):
+    """UNet decoder block."""
     def __init__(
         self,
         in_channels,
@@ -67,6 +67,7 @@ class DecoderBlock(nn.Module):
 
 
 class UnetDecoder(nn.Module):
+    """UNet decoder module."""
     def __init__(
         self,
         encoder_channels,

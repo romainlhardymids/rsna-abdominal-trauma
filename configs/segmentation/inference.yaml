@@ -1,0 +1,15 @@
+models: 
+  tf_efficientnetv2_s:
+    config_path: "/home/romainlhardy/kaggle/rsna-abdominal-trauma/configs/segmentation/tf_efficientnetv2_s_128_224_224.yaml"
+    checkpoint_paths: [
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/segmentation/checkpoints/tf_efficientnetv2_s.in21k_ft_in1k__128_224_224__seed_0__fold_0.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/segmentation/checkpoints/tf_efficientnetv2_s.in21k_ft_in1k__128_224_224__seed_0__fold_1.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/segmentation/checkpoints/tf_efficientnetv2_s.in21k_ft_in1k__128_224_224__seed_0__fold_2.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/segmentation/checkpoints/tf_efficientnetv2_s.in21k_ft_in1k__128_224_224__seed_0__fold_3.ckpt",
+      "/home/romainlhardy/kaggle/rsna-abdominal-trauma/models/segmentation/checkpoints/tf_efficientnetv2_s.in21k_ft_in1k__128_224_224__seed_0__fold_4.ckpt"
+    ]
+
+device: "cuda"
+batch_size: 4
+num_workers: 16
+save_dir: "/home/romainlhardy/kaggle/rsna-abdominal-trauma/data/mask_predictions"

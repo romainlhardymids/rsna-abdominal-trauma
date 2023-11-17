@@ -17,12 +17,14 @@ from tqdm.auto import tqdm
 
 
 def load_model(module, config, checkpoint_path):
+    """Loads a slice-level classification model checkpoint."""
     model = module(config)
     model.load_state_dict(torch.load(checkpoint_path)["state_dict"])
     return model
 
 
 def parse_args():
+    """Parses command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="/home/romainlhardy/kaggle/rsna-abdominal-trauma/configs/slice_classification/config.yaml", required=True)
     args = parser.parse_args()
@@ -30,7 +32,9 @@ def parse_args():
 
 
 def infer(config):
+    """Performs inference on held-out data."""
     df = utils.data_split_slice("/home/romainlhardy/kaggle/rsna-abdominal-trauma/data/data_split_slice.csv")
+    mask_meta = pd.read_csv(config["mask_metadata"]).set_index(["patient_id", "series_id"])
 
     models = config["models"]
     features_dir = config["features_dir"]
@@ -61,20 +65,25 @@ def infer(config):
             for patient_id, series_id in keys:
                 patient_path = os.path.join(utils.DATA_DIR, "train_images", str(patient_id), str(series_id))
                 sorted_slices = sorted([int(p.split(".")[0]) for p in os.listdir(patient_path)])
+                r = mask_meta.loc[patient_id, series_id]
+                mask_dir, mask_bounds = r.mask_dir, r.mask_bounds
                 for i, slice_idx in enumerate(sorted_slices):
                     meta.append({
                         "patient_id": patient_id,
                         "series_id": series_id,
                         "slice_idx": slice_idx,
-                        "position": i
+                        "position": i,
+                        "mask_dir": mask_dir,
+                        "mask_bounds": mask_bounds
                     })
             df_fold = pd.DataFrame(meta)
             
             image_size = config["model"]["data"]["image_size"]
-            
+            num_channels = config["model"]["data"]["num_channels"]
             dataset = SliceClassificationInferenceDataset(
                 df_fold,
                 image_size=image_size,
+                num_channels=num_channels,
                 split="validation"
             )
             dataloader = DataLoader(
@@ -112,21 +121,6 @@ def infer(config):
 
     df_meta = pd.DataFrame(features_meta)
     df_meta.to_csv(os.path.join(features_dir, "metadata.csv"), index=None)
-
-    predictions_list = [np.concatenate(predictions, axis=0) for predictions in predictions_list]
-    results = pd.DataFrame({
-        "patient_id": df_meta.patient_id.values,
-        "series_id": df_meta.series_id.values,
-        "slice_idx": df_meta.slice_idx.values,
-        "fold": df_meta.fold.values,
-        # "pred_any_injury": [str(list(p)) for p in predictions_list[0]],
-        "pred_extravasation_injury": [str(list(p)) for p in predictions_list[0]],
-        "pred_bowel_injury": [str(list(p)) for p in predictions_list[1]],
-        "pred_liver_injury": [str(list(p)) for p in predictions_list[2]],
-        "pred_spleen_injury": [str(list(p)) for p in predictions_list[3]],
-        "pred_kidney_injury": [str(list(p)) for p in predictions_list[4]],
-    })
-    results.to_csv("/home/romainlhardy/kaggle/rsna-abdominal-trauma/data/pred_slice_classification.csv", index=None)
 
 
 def main():
