@@ -2,5 +2,3 @@ build
 models
 __pycache__
 rsna_abdominal_trauma.egg-info
-sam_med2d
-*.code-workspace
