@@ -28,6 +28,7 @@ The second stage seeks to extract slice-level features from each patient scan, w
 ```
 # Training
 python3 src/scripts/slice_classification/train.py --config=configs/slice_classification/tf_efficientnetv2_s_384.yaml
+
 # Inference
 python3 src/scripts/slice_classification/infer.py --config=configs/slice_classification/inference.yaml
 ```
