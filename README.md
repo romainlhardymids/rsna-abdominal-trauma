@@ -9,7 +9,7 @@ This repository contains the training and inference code for my solution to the 
 
 An overview of the solution is shown in the figure below. The final submission notebook can be found at INCLUDE NOTEBOOK LINK.
 
-![Solution overview](./rnsa_abdominal_trauma_overview.png)
+![Solution overview](./rsna_abdominal_trauma_overview.png)
 
 # Organ Segmentation
 The segmentation stage aims to extract bounds for relevant organs in the patient scans (bowel, liver, kidney, and spleen), which we can then leverage in downstream classification models. My choice of segmentator architecture is a 3D UNet model with an EfficientNet backbone and input dimensions of $128 \times 224 \times 224$, which I construct by inflating the modules of a 2D UNet model. I train the model on the subset of patients with available segmentation labels, and use it to predict segmentation probability maps for the full set of patients. The commands below are used to execute the training and inference scripts, respectively.
