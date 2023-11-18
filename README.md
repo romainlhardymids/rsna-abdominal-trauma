@@ -7,7 +7,7 @@ This repository contains the training and inference code for my solution to the 
 2. Slice-level feature extraction
 3. Scan-level classification
 
-An overview of the solution is shown in the figure below. The final submission notebook can be found at INCLUDE NOTEBOOK LINK.
+An overview of the solution is shown in the figure below. The full submission code can be found at `rsna_abdominal_trauma_submission.ipynb`.
 
 ![Solution overview](./rsna_abdominal_trauma_overview.png)
 
