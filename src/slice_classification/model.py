@@ -10,7 +10,7 @@ from layers import heads
 from timm import create_model
 
 def create_slice_classification_model(encoder_params):
-    """Initializes a slice-level classifier from a given configuration"""
+    """Initializes a slice-level classifier from a given configuration."""
     module = getattr(sys.modules[__name__], encoder_params["class"])
     name = encoder_params["encoder_name"]
     return module(name=name, **encoder_params["params"])
